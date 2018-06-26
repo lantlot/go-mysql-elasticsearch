@@ -8,8 +8,8 @@ import (
 	"sync"
 
 	"github.com/juju/errors"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/canal"
+	"github.com/lantlot/go-mysql-elasticsearch/elastic"
+	"github.com/lantlot/go-mysql/canal"
 	"gopkg.in/birkirb/loggers.v1/log"
 )
 

@@ -6,9 +6,9 @@ import (
 	"os/signal"
 	"runtime"
 	"syscall"
-
+	"github.com/lantlot/go-mysql-elasticsearch/river"
 	"github.com/juju/errors"
-	"github.com/siddontang/go-mysql-elasticsearch/river"
+	//"github.com/siddontang/go-mysql-elasticsearch/river"
 	"gopkg.in/birkirb/loggers.v1/log"
 )
 

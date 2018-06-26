@@ -89,6 +89,11 @@ type BulkRequest struct {
 
 	Data map[string]interface{}
 }
+type SetDefaultValueRequest struct {
+	Index    string
+	Type     string
+	Data map[string]interface{}
+}
 
 func (r *BulkRequest) bulk(buf *bytes.Buffer) error {
 	meta := make(map[string]map[string]string)
@@ -358,6 +363,26 @@ func (c *Client) Update(index string, docType string, id string, data map[string
 		url.QueryEscape(id))
 
 	r, err := c.Do("PUT", reqURL, data)
+	if err != nil {
+		return errors.Trace(err)
+	}
+
+	if r.Code == http.StatusOK || r.Code == http.StatusCreated {
+		return nil
+	}
+
+	return errors.Errorf("Error: %s, code: %d", http.StatusText(r.Code), r.Code)
+}
+// Update creates or updates the data
+func (c *Client) UpdateDefaultValue(index string, docType string, data map[string]interface{}) error {
+	if data==nil {
+		return nil
+	}
+	reqURL := fmt.Sprintf("%s://%s/%s/%s/_update_by_query", c.Protocol, c.Addr,
+		url.QueryEscape(index),
+		url.QueryEscape(docType))
+
+	r, err := c.Do("POST", reqURL, data)
 	if err != nil {
 		return errors.Trace(err)
 	}

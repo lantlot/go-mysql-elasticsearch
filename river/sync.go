@@ -9,8 +9,8 @@ import (
 	"time"
 
 	"github.com/juju/errors"
-	"github.com/siddontang/go-mysql-elasticsearch/elastic"
-	"github.com/siddontang/go-mysql/canal"
+	"github.com/lantlot/go-mysql-elasticsearch/elastic"
+	"github.com/lantlot/go-mysql/canal"
 	"github.com/siddontang/go-mysql/mysql"
 	"github.com/siddontang/go-mysql/replication"
 	"github.com/siddontang/go-mysql/schema"
@@ -50,10 +50,54 @@ func (h *eventHandler) OnRotate(e *replication.RotateEvent) error {
 	return h.r.ctx.Err()
 }
 
-func (h *eventHandler) OnTableChanged(schema, table string) error {
+func (h *eventHandler) OnTableChanged(schema, table string,sql string) error {
 	err := h.r.updateRule(schema, table)
+	rule, ok := h.r.rules[ruleKey(schema, table)]
+	if !ok {
+		return nil
+	}
+
 	if err != nil && err != ErrRuleNotExist {
 		return errors.Trace(err)
+	}
+	sqls:=strings.Split(sql,"\r\n")
+	for _,value := range sqls {
+		if strings.HasPrefix(value,"ADD")||strings.HasPrefix(value,"MODIFY") {
+			//get column name
+			words:=strings.Fields(value)
+			var colmnName string
+			var defaultValue string
+			for index,w := range words {
+				if w=="COLUMN" {
+					colmnName=words[index+1]
+					colmnName=colmnName[1:len(colmnName)-1]
+				}
+				if w=="DEFAULT" {
+					defaultValue=words[index+1]
+				}
+			}
+			data:=makeSetDefaultValueData(colmnName,defaultValue)
+			req :=&elastic.SetDefaultValueRequest{Index:rule.Index,Type:rule.Type,Data:data}
+			h.r.syncCh<-req
+		}
+		if strings.HasPrefix(value,"CHANGE") {
+			//get column name
+			words:=strings.Fields(value)
+			var colmnName string
+			var defaultValue string
+			for index,w := range words {
+				if w=="COLUMN" {
+					colmnName=words[index+2]
+					colmnName=colmnName[1:len(colmnName)-1]
+				}
+				if w=="DEFAULT" {
+					defaultValue=words[index+1]
+				}
+			}
+			data:=makeSetDefaultValueData(colmnName,defaultValue)
+			req :=&elastic.SetDefaultValueRequest{Index:rule.Index,Type:rule.Type,Data:data}
+			h.r.syncCh<-req
+		}
 	}
 	return nil
 }
@@ -147,6 +191,8 @@ func (r *River) syncLoop() {
 			case []*elastic.BulkRequest:
 				reqs = append(reqs, v...)
 				needFlush = len(reqs) >= bulkSize
+			case *elastic.SetDefaultValueRequest:
+				r.doSetDefault(v)
 			}
 		case <-ticker.C:
 			needFlush = true
@@ -478,6 +524,13 @@ func (r *River) doBulk(reqs []*elastic.BulkRequest) error {
 
 	return nil
 }
+func (r *River) doSetDefault(req *elastic.SetDefaultValueRequest) error {
+	if err := r.es.UpdateDefaultValue( req.Index,req.Type,req.Data); err != nil {
+		log.Errorf("sync docs err %v after binlog %s", err, r.canal.SyncedPosition())
+		return errors.Trace(err)
+	}
+	return nil
+}
 
 // get mysql field value and convert it to specific value to es
 func (r *River) getFieldValue(col *schema.TableColumn, fieldType string, value interface{}) interface{} {
@@ -507,4 +560,23 @@ func (r *River) getFieldValue(col *schema.TableColumn, fieldType string, value i
 		fieldValue = r.makeReqColumnData(col, value)
 	}
 	return fieldValue
+}
+func makeSetDefaultValueData(colmnName string,defaultValue string) map[string]interface{} {
+	if defaultValue=="" {
+		return nil
+	}
+	m := make(map[string]interface{})
+	script := make(map[string]interface{})
+	script["source"]="ctx._source."+colmnName+"="+ defaultValue+""
+	m["script"] =script
+	query := make(map[string]interface{})
+	bo :=make(map[string]interface{})
+	field := make(map[string]interface{})
+	field["field"]=colmnName;
+	mustnot :=make(map[string]interface{})
+	mustnot["exists"]=field
+	bo["must_not"]=mustnot
+	query["bool"]=bo
+	m["query"] =query
+	return m
 }

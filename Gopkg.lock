@@ -15,6 +15,12 @@
 
 [[projects]]
   branch = "master"
+  name = "github.com/lantlot/go-mysql"
+  packages = ["canal"]
+  revision = "3bf5debf46a48c6a679e3c2fdf5b2c59aeb69342"
+
+[[projects]]
+  branch = "master"
   name = "github.com/pingcap/check"
   packages = ["."]
   revision = "1c287c953996ab3a0bf535dba9d53d809d3dc0b6"
@@ -45,7 +51,6 @@
   branch = "master"
   name = "github.com/siddontang/go-mysql"
   packages = [
-    "canal",
     "client",
     "dump",
     "mysql",
@@ -53,7 +58,7 @@
     "replication",
     "schema"
   ]
-  revision = "fb8f61a50302b65f98d88cf0c5d02a4631fa6ec6"
+  revision = "e59113b0edf2d547ec35e85213ad6ccde1848de9"
 
 [[projects]]
   branch = "master"
@@ -70,6 +75,6 @@
 [solve-meta]
   analyzer-name = "dep"
   analyzer-version = 1
-  inputs-digest = "f6ac894c2b53acb3d996d3324956a2f487ee253525e40aa05164c9e013f75e49"
+  inputs-digest = "620055dd7603d2c5db5d8ddc3016d9279f0e0bf5a70d64627b4d05b903d60405"
   solver-name = "gps-cdcl"
   solver-version = 1

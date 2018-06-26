@@ -6,13 +6,16 @@ import (
 	"testing"
 
 	. "github.com/pingcap/check"
+	"encoding/json"
+	"os"
 )
 
 var host = flag.String("host", "127.0.0.1", "Elasticsearch host")
 var port = flag.Int("port", 9200, "Elasticsearch port")
 
 func Test(t *testing.T) {
-	TestingT(t)
+	b,_ := json.Marshal(makeSetDefaultValueDate())
+	os.Stdout.Write(b)
 }
 
 type elasticTestSuite struct {
@@ -38,6 +41,24 @@ func makeTestData(arg1 string, arg2 string) map[string]interface{} {
 	m["name"] = arg1
 	m["content"] = arg2
 
+	return m
+}
+func makeSetDefaultValueDate() map[string]interface{} {
+	m := make(map[string]interface{})
+	script := make(map[string]interface{})
+	colname:="aaa"
+	defultvalue:="c";
+	script["source"]="ctx._source."+colname+"='"+ defultvalue+"'"
+	m["script"] =script
+	query := make(map[string]interface{})
+	bo :=make(map[string]interface{})
+	mustnot :=make(map[string]interface{})
+	field := make(map[string]interface{})
+	field["field"]=colname;
+	mustnot["exists"]=field
+	bo["must_not"]=mustnot
+	query["bool"]=bo
+	m["query"] =query
 	return m
 }
 
