@@ -41,7 +41,9 @@ func newDefaultRule(schema string, table string) *Rule {
 	r.Table = table
 
 	lowerTable := strings.ToLower(table)
-	r.Index = lowerTable
+	//todo 记录开始生成表
+	//log.Info("now is "+lowerTable)
+	r.Index = lowerTable+"_v1"
 	r.Type = lowerTable
 
 	r.FieldMapping = make(map[string]string)

@@ -10,6 +10,8 @@ import (
 	"net/url"
 
 	"github.com/juju/errors"
+	"gopkg.in/birkirb/loggers.v1/log"
+	"strconv"
 )
 
 // Client is the client to communicate with ES.
@@ -266,7 +268,7 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 	if len(data) > 0 {
 		err = json.Unmarshal(data, &ret)
 	}
-
+	log.Info("bulk success,index is "+items[0].Index+", size ="+ strconv.Itoa(len(items)))
 	return ret, errors.Trace(err)
 }
 
