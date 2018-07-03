@@ -12,6 +12,7 @@ import (
 	"github.com/juju/errors"
 	"gopkg.in/birkirb/loggers.v1/log"
 	"strconv"
+	time2 "time"
 )
 
 // Client is the client to communicate with ES.
@@ -249,7 +250,7 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 			return nil, errors.Trace(err)
 		}
 	}
-
+	time:=time2.Now()
 	resp, err := c.DoRequest("POST", url, &buf)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -268,7 +269,8 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 	if len(data) > 0 {
 		err = json.Unmarshal(data, &ret)
 	}
-	log.Info("bulk success,index is "+items[0].Index+", size ="+ strconv.Itoa(len(items)))
+	t2:=time2.Now();
+	log.Info("bulk success,index is "+items[0].Index+", size ="+ strconv.Itoa(len(items) )+ " time ="+strconv.Itoa(t2.UTC().Nanosecond()-time.UTC().Nanosecond()))
 	return ret, errors.Trace(err)
 }
 
