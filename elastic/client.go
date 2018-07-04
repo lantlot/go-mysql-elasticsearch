@@ -254,6 +254,10 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 	log.Info("start post request")
 	resp, err := c.DoRequest("POST", url, &buf)
 	if err != nil {
+		index:=make(map[string]interface{})
+		for i:=0; i< len(items);i++  {
+			index[items[i].Index]=1
+		}
 		return nil, errors.Trace(err)
 	}
 

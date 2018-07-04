@@ -127,7 +127,6 @@ func (r *River) prepareCanal() error {
 		for key := range dbs {
 			keys = append(keys, key)
 		}
-
 		r.canal.AddDumpDatabases(keys...)
 	}
 
@@ -194,6 +193,9 @@ func (r *River) parseSource() (map[string][]string, error) {
 
 				for i := 0; i < res.Resultset.RowNumber(); i++ {
 					f, _ := res.GetString(i, 0)
+					if contains(s.IgnoreTables, f){
+						continue
+					}
 					err := r.newRule(s.Schema, f)
 					if err != nil {
 						return nil, errors.Trace(err)
@@ -204,6 +206,9 @@ func (r *River) parseSource() (map[string][]string, error) {
 
 				wildTables[ruleKey(s.Schema, table)] = tables
 			} else {
+				if contains(s.IgnoreTables, table){
+					continue
+				}
 				err := r.newRule(s.Schema, table)
 				if err != nil {
 					return nil, errors.Trace(err)
@@ -217,6 +222,15 @@ func (r *River) parseSource() (map[string][]string, error) {
 	}
 
 	return wildTables, nil
+}
+
+func contains(array []string, str string) bool {
+	for e := range array {
+		if array[e] == str {
+			return true
+		}
+	}
+	return false
 }
 
 func (r *River) prepareRule() error {
