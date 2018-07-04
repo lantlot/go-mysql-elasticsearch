@@ -251,6 +251,7 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 		}
 	}
 	time:=time2.Now()
+	log.Info("start post request")
 	resp, err := c.DoRequest("POST", url, &buf)
 	if err != nil {
 		return nil, errors.Trace(err)
@@ -269,8 +270,8 @@ func (c *Client) DoBulk(url string, items []*BulkRequest) (*BulkResponse, error)
 	if len(data) > 0 {
 		err = json.Unmarshal(data, &ret)
 	}
-	t2:=time2.Now();
-	log.Info("bulk success,index is "+items[0].Index+", size ="+ strconv.Itoa(len(items) )+ " time ="+strconv.Itoa(t2.UTC().Nanosecond()-time.UTC().Nanosecond()))
+	elapsed :=time2.Since(time)
+	log.Info("bulk success,index is "+items[0].Index+", size ="+ strconv.Itoa(len(items) )+ " time ="+elapsed.String())
 	return ret, errors.Trace(err)
 }
 
