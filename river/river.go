@@ -193,7 +193,7 @@ func (r *River) parseSource() (map[string][]string, error) {
 
 				for i := 0; i < res.Resultset.RowNumber(); i++ {
 					f, _ := res.GetString(i, 0)
-					if contains(s.IgnoreTables, f){
+					if contains(s.IgnoreTables, f) {
 						continue
 					}
 					err := r.newRule(s.Schema, f)
@@ -206,7 +206,7 @@ func (r *River) parseSource() (map[string][]string, error) {
 
 				wildTables[ruleKey(s.Schema, table)] = tables
 			} else {
-				if contains(s.IgnoreTables, table){
+				if contains(s.IgnoreTables, table) {
 					continue
 				}
 				err := r.newRule(s.Schema, table)
@@ -292,6 +292,9 @@ func (r *River) prepareRule() error {
 			log.Errorf("ignored table without a primary key: %s\n", rule.TableInfo.Name)
 		} else {
 			rules[key] = rule
+		}
+		if rule.IsUnion {
+			rule.TableInfo.AddColumn("table_name", "varchar(45)", "", "")
 		}
 	}
 	r.rules = rules

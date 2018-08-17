@@ -50,7 +50,7 @@ func (h *eventHandler) OnRotate(e *replication.RotateEvent) error {
 	return h.r.ctx.Err()
 }
 
-func (h *eventHandler) OnTableChanged(schema, table string,sql string) error {
+func (h *eventHandler) OnTableChanged(schema, table string, sql string) error {
 	err := h.r.updateRule(schema, table)
 	rule, ok := h.r.rules[ruleKey(schema, table)]
 	if !ok {
@@ -60,43 +60,43 @@ func (h *eventHandler) OnTableChanged(schema, table string,sql string) error {
 	if err != nil && err != ErrRuleNotExist {
 		return errors.Trace(err)
 	}
-	sqls:=strings.Split(sql,"\r\n")
-	for _,value := range sqls {
-		if strings.HasPrefix(value,"ADD")||strings.HasPrefix(value,"MODIFY") {
+	sqls := strings.Split(sql, "\r\n")
+	for _, value := range sqls {
+		if strings.HasPrefix(value, "ADD") || strings.HasPrefix(value, "MODIFY") {
 			//get column name
-			words:=strings.Fields(value)
+			words := strings.Fields(value)
 			var colmnName string
 			var defaultValue string
-			for index,w := range words {
-				if w=="COLUMN" {
-					colmnName=words[index+1]
-					colmnName=colmnName[1:len(colmnName)-1]
+			for index, w := range words {
+				if w == "COLUMN" {
+					colmnName = words[index+1]
+					colmnName = colmnName[1 : len(colmnName)-1]
 				}
-				if w=="DEFAULT" {
-					defaultValue=words[index+1]
+				if w == "DEFAULT" {
+					defaultValue = words[index+1]
 				}
 			}
-			data:=makeSetDefaultValueData(colmnName,defaultValue)
-			req :=&elastic.SetDefaultValueRequest{Index:rule.Index,Type:rule.Type,Data:data}
-			h.r.syncCh<-req
+			data := makeSetDefaultValueData(colmnName, defaultValue)
+			req := &elastic.SetDefaultValueRequest{Index: rule.Index, Type: rule.Type, Data: data}
+			h.r.syncCh <- req
 		}
-		if strings.HasPrefix(value,"CHANGE") {
+		if strings.HasPrefix(value, "CHANGE") {
 			//get column name
-			words:=strings.Fields(value)
+			words := strings.Fields(value)
 			var colmnName string
 			var defaultValue string
-			for index,w := range words {
-				if w=="COLUMN" {
-					colmnName=words[index+2]
-					colmnName=colmnName[1:len(colmnName)-1]
+			for index, w := range words {
+				if w == "COLUMN" {
+					colmnName = words[index+2]
+					colmnName = colmnName[1 : len(colmnName)-1]
 				}
-				if w=="DEFAULT" {
-					defaultValue=words[index+1]
+				if w == "DEFAULT" {
+					defaultValue = words[index+1]
 				}
 			}
-			data:=makeSetDefaultValueData(colmnName,defaultValue)
-			req :=&elastic.SetDefaultValueRequest{Index:rule.Index,Type:rule.Type,Data:data}
-			h.r.syncCh<-req
+			data := makeSetDefaultValueData(colmnName, defaultValue)
+			req := &elastic.SetDefaultValueRequest{Index: rule.Index, Type: rule.Type, Data: data}
+			h.r.syncCh <- req
 		}
 	}
 	return nil
@@ -225,6 +225,9 @@ func (r *River) makeRequest(rule *Rule, action string, rows [][]interface{}) ([]
 	reqs := make([]*elastic.BulkRequest, 0, len(rows))
 
 	for _, values := range rows {
+		if rule.IsUnion {
+			values = append(values, rule.Table)
+		}
 		id, err := r.getDocID(rule, values)
 		if err != nil {
 			return nil, errors.Trace(err)
@@ -269,6 +272,10 @@ func (r *River) makeUpdateRequest(rule *Rule, rows [][]interface{}) ([]*elastic.
 	reqs := make([]*elastic.BulkRequest, 0, len(rows))
 
 	for i := 0; i < len(rows); i += 2 {
+		if rule.IsUnion {
+			rows[i] = append(rows[i], rule.Table)
+			rows[i+1] = append(rows[i+1], rule.Table)
+		}
 		beforeID, err := r.getDocID(rule, rows[i])
 		if err != nil {
 			return nil, errors.Trace(err)
@@ -468,6 +475,7 @@ func (r *River) getDocID(rule *Rule, row []interface{}) (string, error) {
 		if err != nil {
 			return "", err
 		}
+
 	} else {
 		ids = make([]interface{}, 0, len(rule.ID))
 		for _, column := range rule.ID {
@@ -480,13 +488,14 @@ func (r *River) getDocID(rule *Rule, row []interface{}) (string, error) {
 	}
 
 	var buf bytes.Buffer
-
+	if rule.IsUnion {
+		buf.WriteString(rule.Table + "_")
+	}
 	sep := ""
 	for i, value := range ids {
 		if value == nil {
 			return "", errors.Errorf("The %ds id or PK value is nil", i)
 		}
-
 		buf.WriteString(fmt.Sprintf("%s%v", sep, value))
 		sep = ":"
 	}
@@ -525,7 +534,7 @@ func (r *River) doBulk(reqs []*elastic.BulkRequest) error {
 	return nil
 }
 func (r *River) doSetDefault(req *elastic.SetDefaultValueRequest) error {
-	if err := r.es.UpdateDefaultValue( req.Index,req.Type,req.Data); err != nil {
+	if err := r.es.UpdateDefaultValue(req.Index, req.Type, req.Data); err != nil {
 		log.Errorf("sync docs err %v after binlog %s", err, r.canal.SyncedPosition())
 		return errors.Trace(err)
 	}
@@ -561,22 +570,22 @@ func (r *River) getFieldValue(col *schema.TableColumn, fieldType string, value i
 	}
 	return fieldValue
 }
-func makeSetDefaultValueData(colmnName string,defaultValue string) map[string]interface{} {
-	if defaultValue=="" {
+func makeSetDefaultValueData(colmnName string, defaultValue string) map[string]interface{} {
+	if defaultValue == "" {
 		return nil
 	}
 	m := make(map[string]interface{})
 	script := make(map[string]interface{})
-	script["source"]="ctx._source."+colmnName+"="+ defaultValue+""
-	m["script"] =script
+	script["source"] = "ctx._source." + colmnName + "=" + defaultValue + ""
+	m["script"] = script
 	query := make(map[string]interface{})
-	bo :=make(map[string]interface{})
+	bo := make(map[string]interface{})
 	field := make(map[string]interface{})
-	field["field"]=colmnName;
-	mustnot :=make(map[string]interface{})
-	mustnot["exists"]=field
-	bo["must_not"]=mustnot
-	query["bool"]=bo
-	m["query"] =query
+	field["field"] = colmnName
+	mustnot := make(map[string]interface{})
+	mustnot["exists"] = field
+	bo["must_not"] = mustnot
+	query["bool"] = bo
+	m["query"] = query
 	return m
 }

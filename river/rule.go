@@ -11,12 +11,13 @@ import (
 // The mapping rule may thi: schema + table <-> index + document type.
 // schema and table is for MySQL, index and document type is for Elasticsearch.
 type Rule struct {
-	Schema string   `toml:"schema"`
-	Table  string   `toml:"table"`
-	Index  string   `toml:"index"`
-	Type   string   `toml:"type"`
-	Parent string   `toml:"parent"`
-	ID     []string `toml:"id"`
+	Schema  string   `toml:"schema"`
+	Table   string   `toml:"table"`
+	Index   string   `toml:"index"`
+	Type    string   `toml:"type"`
+	Parent  string   `toml:"parent"`
+	ID      []string `toml:"id"`
+	IsUnion bool     `toml:"isunion"`
 
 	// Default, a MySQL table field name is mapped to Elasticsearch field name.
 	// Sometimes, you want to use different name, e.g, the MySQL file name is title,
@@ -43,7 +44,7 @@ func newDefaultRule(schema string, table string) *Rule {
 	lowerTable := strings.ToLower(table)
 	//todo 记录开始生成表
 	//log.Info("now is "+lowerTable)
-	r.Index = lowerTable+"_v1"
+	r.Index = lowerTable + "_v1"
 	r.Type = lowerTable
 
 	r.FieldMapping = make(map[string]string)
